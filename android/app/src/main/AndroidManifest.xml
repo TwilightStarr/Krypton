@@ -1,0 +1,63 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
+    <!-- Android 14+ (API 34) specialUse ön plan servisi; dataSync'in Android 15 zaman aşımı yok -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"/>
+    <!-- Pil optimizasyonu muafiyeti isteği (ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS); Play dışı dağıtım -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    <queries>
+        <package android:name="com.miui.securitycenter"/>
+        <package android:name="com.miui.powerkeeper"/>
+    </queries>
+    <application
+        android:label="Krypton"
+        android:name="${applicationName}"
+        android:icon="@mipmap/ic_launcher"
+        android:largeHeap="true"
+        android:allowBackup="false"
+        android:fullBackupContent="@xml/backup_rules"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        tools:targetApi="31">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:theme="@style/LaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize">
+            <meta-data android:name="io.flutter.embedding.android.NormalTheme" android:resource="@style/NormalTheme"/>
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+        <!-- background_downloader: WorkManager ön plan servisi (dataSync); NotificationReceiver paketin manifestinden birleşir -->
+        <service
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            android:foregroundServiceType="dataSync"
+            tools:node="merge"/>
+        <!-- Yerel model yüklenirken / yanıt üretilirken süreci ön planda tutan servis. API 29-33: dataSync; API 34+:
+             specialUse (zaman aşımı yok). Sınıf CI'da (build-apk.yml) üretilir; ad ".KryptonKeepAliveService" ad
+             alanına göre çözülür. -->
+        <service
+            android:name=".KryptonKeepAliveService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync|specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Cihazdaki yerel yapay zekâ modeli yanıt üretirken uygulamanın arka planda kesilmemesi için ön planda tutulur"/>
+        </service>
+        <!-- LiteRT-LM GPU delegesi: cihazın OpenCL kütüphanelerine erişim (yoksa uygulama yine kurulur) -->
+        <uses-native-library android:name="libOpenCL.so" android:required="false"/>
+        <uses-native-library android:name="libOpenCL-pixel.so" android:required="false"/>
+        <uses-native-library android:name="libOpenCL-car.so" android:required="false"/>
+        <meta-data android:name="flutterEmbedding" android:value="2"/>
+    </application>
+</manifest>
